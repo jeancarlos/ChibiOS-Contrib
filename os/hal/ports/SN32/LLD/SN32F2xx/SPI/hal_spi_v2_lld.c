@@ -356,6 +356,11 @@ msg_t spi_lld_receive(SPIDriver *spip, size_t n, void *rxbuf) {
  */
 msg_t spi_lld_stop_transfer(SPIDriver *spip, size_t *sizep) {
 
+  /* The RX FIFO holds at most eight frames. Do not wait for the peer here. */
+  for (unsigned n = 0; n < 8 && spip->rxbuf && spip->idx < spip->count && !spip->spi->STAT_b.RX_EMPTY; n++) {
+    spip->rxbuf[spip->idx++] = spip->spi->DATA;
+  }
+
   SPI_FIFO_FRESET(spip);
 
   if (sizep != NULL) {
