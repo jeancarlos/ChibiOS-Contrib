@@ -87,6 +87,11 @@ static inline void spi_lld_irq_handler(SPIDriver *spip) {
     spip->spi->IC_b.RXFIFOTHIC = true;
     chSysUnlockFromISR();
 
+    if (spip->state != SPI_ACTIVE) {
+      spip->spi->DATA = 0x00;
+      return;
+    }
+
     if (spip->rxbuf && spip->idx < spip->count) spip->rxbuf[spip->idx] = data;
 
     if (++(spip->idx) >= spip->count) {
@@ -94,7 +99,9 @@ static inline void spi_lld_irq_handler(SPIDriver *spip) {
       /* The peer may keep clocking (reply tail) past the nominal transfer
        * length.  Without a TX FIFO refill the engine underflows and shifts
        * out stale/undefined bytes; feed zeroes so the stream stays clean. */
-      spip->spi->DATA = 0x00;
+      if (spip->state == SPI_READY) {
+        spip->spi->DATA = 0x00;
+      }
     } else {
       spip->spi->DATA = spip->txbuf ? spip->txbuf[spip->idx] : 0x00;
     }
